@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1B2430">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Simultaneous equation solver — calc sheet</title>
+<style>
+:root{
+  --paper:#EEF0EC;
+  --sheet:#F7F8F6;
+  --ink:#1B2430;
+  --graphite:#5C6B7A;
+  --rule:#C3C9C4;
+  --rule-soft:#DDE1DC;
+  --verified:#2F6B4F;
+  --verified-bg:#E2EDE6;
+  --alert:#A33A2A;
+  --alert-bg:#F5E4E0;
+  --grid:#DFE4DE;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","JetBrains Mono",Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#141A20;--sheet:#1A2129;--ink:#DEE4E6;--graphite:#93A3AE;
+    --rule:#38434E;--rule-soft:#2A333C;--verified:#7CC49C;--verified-bg:#1D2E26;
+    --alert:#E08573;--alert-bg:#33201C;--grid:#222B33;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:var(--mono);font-size:14px;line-height:1.55;
+  padding:24px 16px 64px;
+}
+.sheet{max-width:1180px;margin:0 auto;background:var(--sheet);border:1px solid var(--rule)}
+.masthead{
+  display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+  padding:18px 22px 14px;border-bottom:2px solid var(--ink);flex-wrap:wrap;
+}
+.masthead h1{font-size:19px;font-weight:500;margin:0;letter-spacing:-0.01em}
+.eyebrow{
+  font-family:var(--sans);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--graphite);margin:0 0 4px;
+}
+.masthead .meta{font-size:11px;color:var(--graphite);text-align:right;line-height:1.5}
+.cols{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+@media (max-width:880px){.cols{grid-template-columns:minmax(0,1fr)}}
+.pane{padding:20px 22px;min-width:0}
+.pane+.pane{border-left:1px solid var(--rule)}
+@media (max-width:880px){.pane+.pane{border-left:0;border-top:1px solid var(--rule)}}
+.field{margin:0 0 20px}
+.field:last-child{margin-bottom:0}
+label,.flabel{
+  display:block;font-family:var(--sans);font-size:10px;letter-spacing:0.16em;
+  text-transform:uppercase;color:var(--graphite);margin:0 0 7px;
+}
+textarea,input,select{
+  font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--sheet);
+  border:1px solid var(--rule);border-radius:2px;padding:8px 10px;width:100%;
+}
+textarea:focus,input:focus,select:focus,button:focus-visible{
+  outline:2px solid var(--ink);outline-offset:1px;
+}
+#eqs{
+  min-height:190px;line-height:26px;padding:9px 11px;resize:vertical;white-space:pre;overflow-x:auto;
+  background-image:repeating-linear-gradient(to bottom,transparent 0 25px,var(--grid) 25px 26px);
+  background-position:0 9px;background-attachment:local;
+}
+.hint{font-size:11px;color:var(--graphite);margin:7px 0 0;line-height:1.6}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:16px 0 0}
+button{
+  font-family:var(--sans);font-size:12px;letter-spacing:0.04em;color:var(--ink);
+  background:transparent;border:1px solid var(--rule);border-radius:2px;
+  padding:8px 14px;cursor:pointer;
+}
+button:hover{border-color:var(--ink)}
+button.primary{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+button.primary:hover{opacity:.88}
+.guesses{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.guess{display:flex;align-items:center;gap:6px;border:1px solid var(--rule-soft);border-radius:2px;padding:4px 8px}
+.guess span{font-size:13px;min-width:34px;color:var(--graphite)}
+.guess input{border:0;padding:2px 0;background:transparent}
+.guess input:focus{outline-offset:3px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed}
+th{
+  font-family:var(--sans);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--graphite);font-weight:400;text-align:left;
+  padding:0 8px 6px;border-bottom:1px solid var(--ink);
+}
+td{padding:6px 8px;border-bottom:1px solid var(--rule-soft);overflow-wrap:anywhere}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.sol td{font-size:15px}
+.sol td.num{font-weight:600}
+.audit td{font-size:12px;color:var(--graphite)}
+.audit td.num{color:var(--ink)}
+.stamp{
+  display:inline-block;border:2px solid var(--verified);color:var(--verified);
+  background:var(--verified-bg);padding:7px 15px;border-radius:2px;
+  transform:rotate(-1.5deg);margin:20px 0 0;
+}
+.stamp.bad{border-color:var(--alert);color:var(--alert);background:var(--alert-bg)}
+.stamp b{display:block;font-family:var(--sans);font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600}
+.stamp small{display:block;font-size:11px;letter-spacing:0.02em;margin-top:2px}
+.note{
+  border-left:3px solid var(--graphite);padding:9px 12px;margin:16px 0 0;
+  font-size:12px;line-height:1.65;background:var(--paper);
+}
+.note.err{border-left-color:var(--alert);color:var(--alert);background:var(--alert-bg)}
+.note.warn{border-left-color:var(--alert)}
+.method{font-size:11.5px;color:var(--graphite);margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid var(--rule-soft)}
+.empty{color:var(--graphite);font-size:12.5px;line-height:1.7;padding:8px 0}
+.titleblock{border-top:2px solid var(--ink);display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:620px){.titleblock{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tb-cell{padding:9px 14px 11px;border-right:1px solid var(--rule)}
+.tb-cell:last-child{border-right:0}
+.tb-cell .flabel{margin-bottom:3px}
+.tb-cell input{border:0;padding:0;font-size:13px;border-radius:0}
+.tb-cell input:focus{outline-offset:3px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media print{
+  body{background:#fff;padding:0}
+  .sheet{border:0;max-width:none}
+  .noprint{display:none!important}
+  .cols{grid-template-columns:1fr 1fr}
+  #eqs{background-image:none;border:0;padding:0;min-height:0;height:auto}
+  .stamp{transform:none}
+}
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Calculation sheet</p>
+      <h1>Simultaneous equation solver</h1>
+    </div>
+    <div class="meta">
+      Linear &rarr; Gauss&ndash;Jordan, partial pivoting<br>
+      Nonlinear &rarr; damped Newton&ndash;Raphson<br>
+      Every result back-substituted and audited
+    </div>
+  </header>
+
+  <div class="cols">
+
+    <section class="pane">
+      <div class="field">
+        <label for="eqs">Equations &mdash; one per line</label>
+        <textarea id="eqs" spellcheck="false" autocapitalize="off" autocorrect="off">3*Ra + 2*Rb - Rc = 14
+Ra - Rb + 4*Rc = 5
+2*Ra + Rb + Rc = 11</textarea>
+        <p class="hint">Operators <code>+ - * / ^</code> and brackets. Implicit multiplication works: <code>2Ra</code>, <code>3(x+1)</code>. Functions: sin cos tan asin acos atan sinh cosh tanh exp ln log10 sqrt abs. Constants: pi, e. Start a line with <code>#</code> for a comment. Ctrl+Enter solves.</p>
+      </div>
+
+      <div class="field noprint">
+        <span class="flabel" id="glabel">Unknowns</span>
+        <div class="guesses" id="guesses"></div>
+        <p class="hint" id="ghint"></p>
+      </div>
+
+      <div class="actions noprint">
+        <button class="primary" id="go">Solve</button>
+        <button id="copy">Copy results</button>
+        <button id="print">Print sheet</button>
+        <select id="sig" aria-label="Significant figures" style="width:auto;padding:8px 10px">
+          <option value="6">6 s.f.</option>
+          <option value="4">4 s.f.</option>
+          <option value="5">5 s.f.</option>
+          <option value="8" selected>8 s.f.</option>
+          <option value="12">12 s.f.</option>
+        </select>
+      </div>
+
+      <div class="actions noprint" style="margin-top:8px">
+        <button data-ex="planar">Planar equilibrium</button>
+        <button data-ex="joint">Method of joints</button>
+        <button data-ex="slope">Slope deflection</button>
+        <button data-ex="nl">Nonlinear</button>
+      </div>
+    </section>
+
+    <section class="pane">
+      <div id="out">
+        <p class="empty">Results appear here.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="titleblock">
+    <div class="tb-cell"><span class="flabel">Project</span><input id="tb-proj" value="" placeholder="Project name"></div>
+    <div class="tb-cell"><span class="flabel">Member / ref</span><input id="tb-ref" value="" placeholder="e.g. Truss T-01"></div>
+    <div class="tb-cell"><span class="flabel">Calculated by</span><input id="tb-by" value="" placeholder="Initials"></div>
+    <div class="tb-cell"><span class="flabel">Date</span><input id="tb-date" value=""></div>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+"use strict";
+
+var FUNCS={sin:Math.sin,cos:Math.cos,tan:Math.tan,asin:Math.asin,acos:Math.acos,
+atan:Math.atan,sinh:Math.sinh,cosh:Math.cosh,tanh:Math.tanh,exp:Math.exp,
+ln:Math.log,log:Math.log,log10:Math.log10,sqrt:Math.sqrt,abs:Math.abs};
+var CONSTS={pi:Math.PI,e:Math.E};
+
+function tokenize(s){
+  var t=[],i=0,c,j,k;
+  while(i<s.length){
+    c=s[i];
+    if(/\s/.test(c)){i++;continue;}
+    if(/[0-9.]/.test(c)){
+      j=i;while(j<s.length&&/[0-9.]/.test(s[j]))j++;
+      if(s[j]==="e"||s[j]==="E"){
+        k=j+1;if(s[k]==="+"||s[k]==="-")k++;
+        if(/[0-9]/.test(s[k]||"")){while(k<s.length&&/[0-9]/.test(s[k]))k++;j=k;}
+      }
+      var num=parseFloat(s.slice(i,j));
+      if(!isFinite(num))throw new Error('Cannot read the number "'+s.slice(i,j)+'".');
+      t.push({k:"num",v:num});i=j;continue;
+    }
+    if(/[A-Za-z_]/.test(c)){
+      j=i;while(j<s.length&&/[A-Za-z0-9_]/.test(s[j]))j++;
+      t.push({k:"id",v:s.slice(i,j)});i=j;continue;
+    }
+    if("+-*/^()".indexOf(c)>=0){t.push({k:c});i++;continue;}
+    throw new Error('Character "'+c+'" is not valid here. Use + - * / ^ ( ) only.');
+  }
+  return t;
+}
+
+function parse(tokens){
+  var p=0;
+  function peek(){return tokens[p];}
+  function expr(){
+    var n=term(),o;
+    while(peek()&&(peek().k==="+"||peek().k==="-")){o=tokens[p++].k;n={k:"bin",o:o,a:n,b:term()};}
+    return n;
+  }
+  function term(){
+    var n=unary(),o;
+    while(peek()){
+      if(peek().k==="*"||peek().k==="/"){o=tokens[p++].k;n={k:"bin",o:o,a:n,b:unary()};}
+      else if(peek().k==="num"||peek().k==="id"||peek().k==="("){n={k:"bin",o:"*",a:n,b:unary()};}
+      else break;
+    }
+    return n;
+  }
+  function unary(){
+    if(peek()&&peek().k==="-"){p++;return {k:"neg",a:unary()};}
+    if(peek()&&peek().k==="+"){p++;return unary();}
+    return power();
+  }
+  function power(){
+    var b=primary();
+    if(peek()&&peek().k==="^"){p++;return {k:"bin",o:"^",a:b,b:unary()};}
+    return b;
+  }
+  function primary(){
+    var t=peek(),n;
+    if(!t)throw new Error("The expression ends early — something is missing after the last operator.");
+    if(t.k==="num"){p++;return {k:"num",v:t.v};}
+    if(t.k==="id"){
+      p++;
+      if(peek()&&peek().k==="("){
+        if(!FUNCS[t.v])throw new Error('"'+t.v+'" is not a known function. Insert * if you meant to multiply.');
+        p++;n=expr();
+        if(!peek()||peek().k!==")")throw new Error('Missing ")" after '+t.v+"(.");
+        p++;return {k:"fn",n:t.v,a:n};
+      }
+      if(CONSTS[t.v]!==undefined)return {k:"num",v:CONSTS[t.v]};
+      return {k:"var",n:t.v};
+    }
+    if(t.k==="("){
+      p++;n=expr();
+      if(!peek()||peek().k!==")")throw new Error('Missing closing ")".');
+      p++;return n;
+    }
+    throw new Error('Unexpected "'+t.k+'" in the expression.');
+  }
+  var root=expr();
+  if(p<tokens.length)throw new Error("Extra characters after the end of the expression.");
+  return root;
+}
+
+function ev(n,v){
+  switch(n.k){
+    case "num":return n.v;
+    case "var":return v[n.n];
+    case "neg":return -ev(n.a,v);
+    case "fn":return FUNCS[n.n](ev(n.a,v));
+    case "bin":
+      var a=ev(n.a,v),b=ev(n.b,v);
+      if(n.o==="+")return a+b;
+      if(n.o==="-")return a-b;
+      if(n.o==="*")return a*b;
+      if(n.o==="/")return a/b;
+      return Math.pow(a,b);
+  }
+  return NaN;
+}
+
+function collect(n,set){
+  if(n.k==="var")set[n.n]=1;
+  else if(n.k==="neg"||n.k==="fn")collect(n.a,set);
+  else if(n.k==="bin"){collect(n.a,set);collect(n.b,set);}
+  return set;
+}
+
+function residuals(sys,x){
+  var v={},i,r=[];
+  for(i=0;i<sys.names.length;i++)v[sys.names[i]]=x[i];
+  for(i=0;i<sys.eqs.length;i++)r.push(ev(sys.eqs[i].lhs,v)-ev(sys.eqs[i].rhs,v));
+  return r;
+}
+
+function jacobian(sys,x,f0){
+  var n=x.length,m=sys.eqs.length,J=[],i,j,h,xp,fp;
+  if(!f0)f0=residuals(sys,x);
+  for(i=0;i<m;i++)J.push(new Array(n));
+  for(j=0;j<n;j++){
+    h=Math.max(1e-7,1e-7*Math.abs(x[j]));
+    xp=x.slice();xp[j]+=h;
+    fp=residuals(sys,xp);
+    for(i=0;i<m;i++)J[i][j]=(fp[i]-f0[i])/h;
+  }
+  return J;
+}
+
+function finite(a){
+  for(var i=0;i<a.length;i++){
+    if(Array.isArray(a[i])){if(!finite(a[i]))return false;}
+    else if(!isFinite(a[i]))return false;
+  }
+  return true;
+}
+
+function isLinear(sys){
+  var n=sys.names.length,f0=residuals(sys,newArr(n,0));
+  if(!finite(f0))return {linear:false};
+  var seeds=[[0.73,-1.31],[2.17,0.89],[-0.41,1.63]],s,i,k;
+  for(s=0;s<seeds.length;s++){
+    var a=[],b=[],ab=[];
+    for(k=0;k<n;k++){
+      a.push(seeds[s][0]*Math.cos(k+1.1));
+      b.push(seeds[s][1]*Math.sin(k+2.3));
+      ab.push(a[k]+b[k]);
+    }
+    var fa=residuals(sys,a),fb=residuals(sys,b),fab=residuals(sys,ab);
+    if(!finite(fa)||!finite(fb)||!finite(fab))return {linear:false};
+    for(i=0;i<f0.length;i++){
+      var dev=fab[i]-fa[i]-fb[i]+f0[i],
+          scale=Math.abs(fa[i])+Math.abs(fb[i])+Math.abs(fab[i])+Math.abs(f0[i])+1;
+      if(Math.abs(dev)>1e-9*scale)return {linear:false};
+    }
+  }
+  return {linear:true};
+}
+
+function newArr(n,v){var a=[],i;for(i=0;i<n;i++)a.push(v);return a;}
+
+function linearCoeffs(sys,f0){
+  var n=sys.names.length,m=sys.eqs.length,A=[],i,j,xp,fp;
+  for(i=0;i<m;i++)A.push(new Array(n));
+  for(j=0;j<n;j++){
+    xp=newArr(n,0);xp[j]=1;
+    fp=residuals(sys,xp);
+    for(i=0;i<m;i++)A[i][j]=fp[i]-f0[i];
+  }
+  return A;
+}
+
+function solveLin(A,b){
+  var n=b.length,M=[],i,j,c,piv,f,r;
+  for(i=0;i<n;i++)M.push(A[i].slice().concat([b[i]]));
+  for(c=0;c<n;c++){
+    piv=c;
+    for(r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[piv][c]))piv=r;
+    if(Math.abs(M[piv][c])<1e-13)return null;
+    if(piv!==c){var tmp=M[c];M[c]=M[piv];M[piv]=tmp;}
+    for(r=0;r<n;r++){
+      if(r===c)continue;
+      f=M[r][c]/M[c][c];
+      if(f===0)continue;
+      for(j=c;j<=n;j++)M[r][j]-=f*M[c][j];
+    }
+  }
+  var x=[];
+  for(i=0;i<n;i++)x.push(M[i][n]/M[i][i]);
+  return x;
+}
+
+function normInf(A){
+  var m=0,i,j,s;
+  for(i=0;i<A.length;i++){s=0;for(j=0;j<A[i].length;j++)s+=Math.abs(A[i][j]);if(s>m)m=s;}
+  return m;
+}
+
+function condEstimate(A){
+  var n=A.length,i,j,inv=[],col;
+  if(n>60)return null;
+  for(i=0;i<n;i++)inv.push(new Array(n));
+  for(j=0;j<n;j++){
+    var e=newArr(n,0);e[j]=1;
+    col=solveLin(A,e);
+    if(!col)return null;
+    for(i=0;i<n;i++)inv[i][j]=col[i];
+  }
+  if(!finite(inv))return null;
+  return normInf(A)*normInf(inv);
+}
+
+function newton(sys,x0){
+  var x=x0.slice(),it,f,nf,J,d,lam,k,xn,fn,nfn;
+  for(it=0;it<300;it++){
+    f=residuals(sys,x);
+    if(!finite(f))return null;
+    nf=Math.sqrt(f.reduce(function(s,v){return s+v*v;},0));
+    if(nf<1e-12)return {x:x,it:it};
+    J=jacobian(sys,x,f);
+    if(!finite(J))return null;
+    d=solveLin(J,f.map(function(v){return -v;}));
+    if(!d||!finite(d))return null;
+    lam=1;
+    var moved=false;
+    for(k=0;k<40;k++){
+      xn=x.map(function(v,i){return v+lam*d[i];});
+      fn=residuals(sys,xn);
+      if(finite(fn)){
+        nfn=Math.sqrt(fn.reduce(function(s,v){return s+v*v;},0));
+        if(nfn<nf){x=xn;moved=true;break;}
+      }
+      lam/=2;
+    }
+    if(!moved)break;
+  }
+  f=residuals(sys,x);
+  if(!finite(f))return null;
+  nf=Math.sqrt(f.reduce(function(s,v){return s+v*v;},0));
+  return nf<1e-8?{x:x,it:it}:null;
+}
+
+function read(){
+  var raw=document.getElementById("eqs").value.split("\n"),eqs=[],names={},i,line,parts;
+  for(i=0;i<raw.length;i++){
+    line=raw[i].trim();
+    if(!line||line.charAt(0)==="#"||line.slice(0,2)==="//")continue;
+    parts=line.split("=");
+    if(parts.length!==2)
+      throw new Error("Line "+(i+1)+" needs exactly one = sign. Found "+(parts.length-1)+".");
+    if(!parts[0].trim()||!parts[1].trim())
+      throw new Error("Line "+(i+1)+" is missing an expression on one side of the =.");
+    var lhs,rhs;
+    try{lhs=parse(tokenize(parts[0]));rhs=parse(tokenize(parts[1]));}
+    catch(e){throw new Error("Line "+(i+1)+": "+e.message);}
+    collect(lhs,names);collect(rhs,names);
+    eqs.push({lhs:lhs,rhs:rhs,txt:line});
+  }
+  return {eqs:eqs,names:Object.keys(names).sort()};
+}
+
+var lastNames=[],lastResult=null;
+
+function drawGuesses(){
+  var sys,box=document.getElementById("guesses"),hint=document.getElementById("ghint"),
+      lab=document.getElementById("glabel");
+  try{sys=read();}catch(e){return;}
+  var old={},i,el;
+  for(i=0;i<lastNames.length;i++){
+    el=box.querySelector('[data-g="'+lastNames[i]+'"]');
+    if(el)old[lastNames[i]]=el.value;
+  }
+  lastNames=sys.names;
+  if(!sys.names.length){box.innerHTML="";hint.textContent="";lab.textContent="Unknowns";return;}
+  lab.textContent="Unknowns detected ("+sys.names.length+")";
+  var html="";
+  for(i=0;i<sys.names.length;i++){
+    var n=sys.names[i],v=old[n]!==undefined?old[n]:"1";
+    html+='<div class="guess"><span>'+esc(n)+'</span>'+
+      '<input data-g="'+esc(n)+'" value="'+esc(v)+'" aria-label="Initial guess for '+esc(n)+'"></div>';
+  }
+  box.innerHTML=html;
+  hint.textContent="Values are starting guesses. They are ignored for linear systems and only matter when the system is nonlinear.";
+}
+
+function sf(){return parseInt(document.getElementById("sig").value,10);}
+
+function fmt(v){
+  if(!isFinite(v))return String(v);
+  var d=sf(),a=Math.abs(v);
+  if(a!==0&&(a<1e-5||a>=1e9))return v.toExponential(d-1);
+  var s=v.toPrecision(d);
+  if(s.indexOf("e")>=0)return s;
+  if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\.$/,"");
+  if(s==="-0")s="0";
+  return s;
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"]/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+  });
+}
+
+function fail(msg){
+  document.getElementById("out").innerHTML='<div class="note err">'+esc(msg)+"</div>";
+  lastResult=null;
+}
+
+function solve(){
+  var sys;
+  try{sys=read();}catch(e){return fail(e.message);}
+
+  if(!sys.eqs.length)return fail("No equations yet. Type one per line, each with an = sign.");
+  if(!sys.names.length)return fail("No unknowns found. Every symbol on these lines is a number, function or constant.");
+  if(sys.eqs.length!==sys.names.length){
+    return fail(sys.eqs.length+" equation"+(sys.eqs.length===1?"":"s")+" for "+sys.names.length+
+      " unknown"+(sys.names.length===1?"":"s")+" ("+sys.names.join(", ")+"). "+
+      (sys.eqs.length<sys.names.length
+        ? "Add "+(sys.names.length-sys.eqs.length)+" more equation(s), or check for a mistyped variable name."
+        : "Remove "+(sys.eqs.length-sys.names.length)+" equation(s), or check for a mistyped variable name."));
+  }
+
+  var lin,x,method,cond=null,it=null;
+  try{
+    lin=isLinear(sys);
+    if(lin.linear){
+      var zero=newArr(sys.names.length,0),
+          f0=residuals(sys,zero),
+          b=f0.map(function(v){return -v;});
+      if(!finite(f0)||!finite(b))return fail("The equations cannot be evaluated. Check for division by zero or a square root of a negative number.");
+      var A=linearCoeffs(sys,f0);
+      if(!finite(A))return fail("The coefficients cannot be evaluated. Check the equations for a division by zero.");
+      x=solveLin(A,b);
+      if(!x)return fail("This linear system is singular — the equations are not independent, so there is no unique solution. One equation is a combination of the others, or two describe the same condition.");
+      cond=condEstimate(A);
+      method="Linear system. Gauss–Jordan elimination with partial pivoting, exact to machine precision.";
+    }else{
+      var g=[],i,el,val;
+      for(i=0;i<sys.names.length;i++){
+        el=document.querySelector('[data-g="'+sys.names[i]+'"]');
+        val=el?parseFloat(el.value):1;
+        g.push(isFinite(val)?val:1);
+      }
+      var res=newton(sys,g);
+      if(!res){
+        var seeds=[0.1,-1,2,-2,5,-5,10,0.5],s;
+        for(s=0;s<seeds.length&&!res;s++){
+          res=newton(sys,sys.names.map(function(_,k){return seeds[s]*(k%2?-1:1);}));
+        }
+      }
+      if(!res)return fail("Newton–Raphson did not converge from these starting values. Nonlinear systems can have several roots or none at all. Adjust the initial guesses toward the answer you expect, or check that a solution exists.");
+      x=res.x;it=res.it;
+      method="Nonlinear system. Damped Newton–Raphson with a numerical Jacobian, converged in "+res.it+" iteration"+(res.it===1?"":"s")+".";
+    }
+  }catch(e){return fail(e.message);}
+
+  if(!finite(x))return fail("The solution is not a finite number. Check the equations for a division by zero.");
+
+  var r=residuals(sys,x),i2,maxr=0;
+  for(i2=0;i2<r.length;i2++)if(Math.abs(r[i2])>maxr)maxr=Math.abs(r[i2]);
+
+  var scale=0;
+  for(i2=0;i2<x.length;i2++)scale=Math.max(scale,Math.abs(x[i2]));
+  var ok=maxr<=1e-7*Math.max(1,scale);
+
+  lastResult={sys:sys,x:x,r:r,maxr:maxr,method:method,cond:cond,ok:ok};
+  render();
+}
+
+function render(){
+  if(!lastResult)return;
+  var R=lastResult,html="",i;
+  html+='<p class="method">'+esc(R.method)+"</p>";
+
+  html+='<table class="sol"><thead><tr><th>Unknown</th><th style="text-align:right">Value</th></tr></thead><tbody>';
+  for(i=0;i<R.sys.names.length;i++)
+    html+="<tr><td>"+esc(R.sys.names[i])+'</td><td class="num">'+esc(fmt(R.x[i]))+"</td></tr>";
+  html+="</tbody></table>";
+
+  html+='<p class="flabel" style="margin:22px 0 7px">Back-substitution audit &mdash; LHS &minus; RHS</p>';
+  html+='<table class="audit"><tbody>';
+  for(i=0;i<R.sys.eqs.length;i++)
+    html+="<tr><td>"+esc(R.sys.eqs[i].txt)+'</td><td class="num" style="width:96px">'+
+      esc(R.r[i]===0?"0":R.r[i].toExponential(2))+"</td></tr>";
+  html+="</tbody></table>";
+
+  html+='<div class="stamp'+(R.ok?"":" bad")+'"><b>'+(R.ok?"Checked":"Not verified")+
+    "</b><small>Max residual "+esc(R.maxr===0?"0":R.maxr.toExponential(2))+"</small></div>";
+
+  if(!R.ok)
+    html+='<div class="note warn">The residuals are larger than they should be. Treat these values as provisional and re-check the equations as typed.</div>';
+
+  if(R.cond!==null&&R.cond>1e8)
+    html+='<div class="note warn">Condition number is approximately '+esc(R.cond.toExponential(1))+
+      ". The system is ill-conditioned: small changes in the coefficients will move the answer a lot. "+
+      "In a structural context this usually means the equations are nearly dependent — check whether the structure is close to a mechanism, or whether two equilibrium conditions are restating the same thing.</div>";
+  else if(R.cond!==null)
+    html+='<div class="note">Condition number approximately '+esc(R.cond.toExponential(1))+
+      ". Below 1e8 the system is well-conditioned and the digits shown are trustworthy.</div>";
+
+  document.getElementById("out").innerHTML=html;
+}
+
+function asText(){
+  if(!lastResult)return "";
+  var R=lastResult,L=[],i;
+  var proj=document.getElementById("tb-proj").value,
+      ref=document.getElementById("tb-ref").value,
+      by=document.getElementById("tb-by").value,
+      dt=document.getElementById("tb-date").value;
+  L.push("SIMULTANEOUS EQUATION SOLVER — CALCULATION SHEET");
+  L.push("Project: "+(proj||"—")+"   Ref: "+(ref||"—")+"   By: "+(by||"—")+"   Date: "+(dt||"—"));
+  L.push("");
+  L.push("EQUATIONS");
+  for(i=0;i<R.sys.eqs.length;i++)L.push("  "+R.sys.eqs[i].txt);
+  L.push("");
+  L.push("METHOD");
+  L.push("  "+R.method);
+  if(R.cond!==null)L.push("  Condition number approx "+R.cond.toExponential(1));
+  L.push("");
+  L.push("SOLUTION");
+  for(i=0;i<R.sys.names.length;i++)L.push("  "+R.sys.names[i]+" = "+fmt(R.x[i]));
+  L.push("");
+  L.push("BACK-SUBSTITUTION AUDIT (LHS - RHS)");
+  for(i=0;i<R.sys.eqs.length;i++)
+    L.push("  "+R.sys.eqs[i].txt+"   ->   "+(R.r[i]===0?"0":R.r[i].toExponential(2)));
+  L.push("");
+  L.push((R.ok?"CHECKED":"NOT VERIFIED")+" — max residual "+(R.maxr===0?"0":R.maxr.toExponential(2)));
+  return L.join("\n");
+}
+
+var EX={
+  planar:"# Planar equilibrium of a rigid body\n# sum Fx = 0\nAx + 12 = 0\n# sum Fy = 0\nAy + By - 40 - 25 = 0\n# sum M about A = 0\nBy*8 - 40*3 - 25*6 = 0",
+  joint:"# Method of joints — three-member joint, angles in degrees\n# sum Fx = 0\nFab*cos(30*pi/180) - Fac*cos(45*pi/180) = 0\n# sum Fy = 0\nFab*sin(30*pi/180) + Fac*sin(45*pi/180) + Fad = 60\n# member AD is a zero-force member\nFad = 0",
+  slope:"# Slope deflection — two-span continuous beam, EI constant\n# joint B equilibrium and end conditions, unknowns are rotations x EI\n4*Ta + 2*Tb = 48\n2*Ta + 8*Tb + 2*Tc = -18\n2*Tb + 4*Tc = 30",
+  nl:"# Nonlinear — try guesses 3 and 4, then -3 and -4\nx^2 + y^2 = 25\nx*y = 12"
+};
+
+function init(){
+  var d=new Date();
+  document.getElementById("tb-date").value=
+    String(d.getDate()).padStart(2,"0")+" "+
+    ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+" "+
+    d.getFullYear();
+
+  document.getElementById("go").addEventListener("click",solve);
+  document.getElementById("eqs").addEventListener("input",drawGuesses);
+  document.getElementById("sig").addEventListener("change",render);
+  document.getElementById("print").addEventListener("click",function(){window.print();});
+
+  document.getElementById("copy").addEventListener("click",function(){
+    var btn=this,txt=asText();
+    if(!txt){btn.textContent="Nothing to copy";setTimeout(function(){btn.textContent="Copy results";},1400);return;}
+    function done(){btn.textContent="Copied";setTimeout(function(){btn.textContent="Copy results";},1400);}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(done,manual);
+    }else manual();
+    function manual(){
+      var ta=document.createElement("textarea");
+      ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
+      document.body.appendChild(ta);ta.select();
+      try{document.execCommand("copy");done();}
+      catch(e){btn.textContent="Copy failed";setTimeout(function(){btn.textContent="Copy results";},1400);}
+      document.body.removeChild(ta);
+    }
+  });
+
+  document.addEventListener("keydown",function(e){
+    if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();solve();}
+  });
+
+  var btns=document.querySelectorAll("[data-ex]"),i;
+  for(i=0;i<btns.length;i++)btns[i].addEventListener("click",function(){
+    document.getElementById("eqs").value=EX[this.getAttribute("data-ex")];
+    drawGuesses();solve();
+  });
+
+  drawGuesses();
+  solve();
+
+  if("serviceWorker" in navigator && location.protocol!=="file:"){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  }
+  var deferred=null;
+  window.addEventListener("beforeinstallprompt",function(e){
+    e.preventDefault();deferred=e;
+    var btn=document.createElement("button");
+    btn.textContent="Install app";
+    btn.className="noprint";
+    btn.addEventListener("click",function(){
+      if(!deferred)return;
+      deferred.prompt();
+      deferred.userChoice.then(function(){deferred=null;btn.remove();});
+    });
+    var acts=document.querySelector(".actions");
+    if(acts)acts.appendChild(btn);
+  });
+}
+
+init();
+})();
+</script>
+</body>
+</html>
