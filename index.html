@@ -99,6 +99,13 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .sol td.num{font-weight:600}
 .audit td{font-size:12px;color:var(--graphite)}
 .audit td.num{color:var(--ink)}
+.aud{border-bottom:1px solid var(--rule-soft);padding:9px 8px 10px}
+.aud-eq{font-size:13px;overflow-wrap:anywhere}
+.aud-step{font-size:12.5px;color:var(--graphite);margin-top:5px;padding-left:15px;overflow-wrap:anywhere;line-height:1.5}
+.aud-step .k{display:inline-block;min-width:74px;font-family:var(--sans);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;vertical-align:top}
+.aud-step b{color:var(--ink);font-weight:600}
+.toggle{display:flex;align-items:center;gap:7px;font-family:var(--sans);font-size:12px;color:var(--graphite);cursor:pointer}
+.toggle input{width:auto;margin:0}
 .stamp{
   display:inline-block;border:2px solid var(--verified);color:var(--verified);
   background:var(--verified-bg);padding:7px 15px;border-radius:2px;
@@ -176,6 +183,7 @@ x - y + 4*z = 5
           <option value="8" selected>8 s.f.</option>
           <option value="12">12 s.f.</option>
         </select>
+        <label class="toggle"><input type="checkbox" id="showsub" checked> Show substitution</label>
       </div>
 
       <div class="actions noprint" style="margin-top:8px">
@@ -491,6 +499,35 @@ function drawGuesses(){
 
 function sf(){return parseInt(document.getElementById("sig").value,10);}
 
+function prec(n){
+  if(n.k==="bin"){
+    if(n.o==="+"||n.o==="-")return 1;
+    if(n.o==="*"||n.o==="/")return 2;
+    return 4;
+  }
+  if(n.k==="neg")return 3;
+  return 5;
+}
+
+function subst(n,v){
+  switch(n.k){
+    case "num":return fmt(n.v);
+    case "var":return "("+fmt(v[n.n])+")";
+    case "neg":return "-"+wrapSub(n.a,v,3);
+    case "fn":return n.n+"("+subst(n.a,v)+")";
+    case "bin":
+      var need=(n.o==="-"||n.o==="/")?prec(n)+1:prec(n);
+      var l=wrapSub(n.a,v,prec(n)),r=wrapSub(n.b,v,need);
+      return n.o==="^"?l+"^"+r:l+" "+n.o+" "+r;
+  }
+  return "";
+}
+
+function wrapSub(n,v,need){
+  var t=subst(n,v);
+  return prec(n)<need?"("+t+")":t;
+}
+
 function fmt(v){
   if(!isFinite(v))return String(v);
   var d=sf(),a=Math.abs(v);
@@ -584,12 +621,32 @@ function render(){
     html+="<tr><td>"+esc(R.sys.names[i])+'</td><td class="num">'+esc(fmt(R.x[i]))+"</td></tr>";
   html+="</tbody></table>";
 
+  var subEl=document.getElementById("showsub"),wantSub=subEl?subEl.checked:true;
   html+='<p class="flabel" style="margin:22px 0 7px">Back-substitution audit &mdash; LHS &minus; RHS</p>';
-  html+='<table class="audit"><tbody>';
-  for(i=0;i<R.sys.eqs.length;i++)
-    html+="<tr><td>"+esc(R.sys.eqs[i].txt)+'</td><td class="num" style="width:96px">'+
-      esc(R.r[i]===0?"0":R.r[i].toExponential(2))+"</td></tr>";
-  html+="</tbody></table>";
+  if(wantSub){
+    var vm={},q;
+    for(q=0;q<R.sys.names.length;q++)vm[R.sys.names[q]]=R.x[q];
+    for(i=0;i<R.sys.eqs.length;i++){
+      var eq=R.sys.eqs[i],
+          lv=ev(eq.lhs,vm),rv=ev(eq.rhs,vm),
+          bare=eq.txt.replace(/^\s*#.*$/,"");
+      html+='<div class="aud">'+
+        '<div class="aud-eq">'+esc(bare)+'</div>'+
+        '<div class="aud-step"><span class="k">Substitute</span>'+
+          esc(subst(eq.lhs,vm))+' = '+esc(subst(eq.rhs,vm))+'</div>'+
+        '<div class="aud-step"><span class="k">Evaluates</span><b>'+
+          esc(fmt(lv))+'</b> = <b>'+esc(fmt(rv))+'</b>'+
+          '&nbsp;&nbsp;&mdash;&nbsp; difference '+esc(R.r[i]===0?"0":R.r[i].toExponential(2))+
+        '</div>'+
+      '</div>';
+    }
+  }else{
+    html+='<table class="audit"><tbody>';
+    for(i=0;i<R.sys.eqs.length;i++)
+      html+="<tr><td>"+esc(R.sys.eqs[i].txt)+'</td><td class="num" style="width:96px">'+
+        esc(R.r[i]===0?"0":R.r[i].toExponential(2))+"</td></tr>";
+    html+="</tbody></table>";
+  }
 
   html+='<div class="stamp'+(R.ok?"":" bad")+'"><b>'+(R.ok?"Checked":"Not verified")+
     "</b><small>Max residual "+esc(R.maxr===0?"0":R.maxr.toExponential(2))+"</small></div>";
@@ -628,9 +685,16 @@ function asText(){
   L.push("SOLUTION");
   for(i=0;i<R.sys.names.length;i++)L.push("  "+R.sys.names[i]+" = "+fmt(R.x[i]));
   L.push("");
-  L.push("BACK-SUBSTITUTION AUDIT (LHS - RHS)");
-  for(i=0;i<R.sys.eqs.length;i++)
-    L.push("  "+R.sys.eqs[i].txt+"   ->   "+(R.r[i]===0?"0":R.r[i].toExponential(2)));
+  L.push("BACK-SUBSTITUTION AUDIT");
+  var vmT={};
+  for(i=0;i<R.sys.names.length;i++)vmT[R.sys.names[i]]=R.x[i];
+  for(i=0;i<R.sys.eqs.length;i++){
+    var e2=R.sys.eqs[i];
+    L.push("  "+e2.txt);
+    L.push("    substitute:  "+subst(e2.lhs,vmT)+" = "+subst(e2.rhs,vmT));
+    L.push("    evaluates:   "+fmt(ev(e2.lhs,vmT))+" = "+fmt(ev(e2.rhs,vmT))+
+           "   difference "+(R.r[i]===0?"0":R.r[i].toExponential(2)));
+  }
   L.push("");
   L.push((R.ok?"CHECKED":"NOT VERIFIED")+" — max residual "+(R.maxr===0?"0":R.maxr.toExponential(2)));
   return L.join("\n");
@@ -651,6 +715,7 @@ function init(){
   document.getElementById("go").addEventListener("click",solve);
   document.getElementById("eqs").addEventListener("input",drawGuesses);
   document.getElementById("sig").addEventListener("change",render);
+  document.getElementById("showsub").addEventListener("change",render);
   document.getElementById("print").addEventListener("click",function(){window.print();});
 
   document.getElementById("copy").addEventListener("click",function(){

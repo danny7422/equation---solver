@@ -1,5 +1,5 @@
 /* Cache-first service worker. Bump VERSION when you update any file. */
-var VERSION = "solver-v2";
+var VERSION = "solver-v3";
 var ASSETS = [
   "./",
   "./index.html",
