@@ -44,6 +44,11 @@ body{
   padding:18px 22px 14px;border-bottom:2px solid var(--ink);flex-wrap:wrap;
 }
 .masthead h1{font-size:19px;font-weight:500;margin:0;letter-spacing:-0.01em}
+.vbadge{
+  display:inline-block;vertical-align:2px;margin-left:8px;
+  font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:0.08em;
+  background:var(--ink);color:var(--sheet);padding:2px 8px;border-radius:2px;
+}
 .eyebrow{
   font-family:var(--sans);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;
   color:var(--graphite);margin:0 0 4px;
@@ -161,7 +166,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
   <header class="masthead">
     <div>
       <p class="eyebrow">Calculation sheet</p>
-      <h1>Simultaneous equation solver</h1>
+      <h1>Simultaneous equation solver <span class="vbadge">v4</span></h1>
     </div>
     <div class="meta">
       Linear &rarr; Gauss&ndash;Jordan, partial pivoting<br>
@@ -567,13 +572,20 @@ function fail(msg){
   lastResult=null;
 }
 
+function autoGrow(){
+  var t=document.getElementById("eqs");
+  if(!t)return;
+  t.style.height="auto";
+  t.style.height=Math.max(190,t.scrollHeight+4)+"px";
+}
+
 function syncPrint(){
   var el=document.getElementById("eqprint"),src=document.getElementById("eqs");
   if(el&&src)el.textContent=src.value.replace(/[ \t]+$/gm,"").replace(/\n{3,}/g,"\n\n").replace(/\s+$/,"");
 }
 
 function solve(){
-  syncPrint();
+  autoGrow();syncPrint();
   var sys;
   try{sys=read();}catch(e){return fail(e.message);}
 
@@ -738,7 +750,7 @@ function init(){
     d.getFullYear();
 
   document.getElementById("go").addEventListener("click",solve);
-  document.getElementById("eqs").addEventListener("input",drawGuesses);
+  document.getElementById("eqs").addEventListener("input",function(){autoGrow();drawGuesses();});
   document.getElementById("sig").addEventListener("change",render);
   document.getElementById("showsub").addEventListener("change",render);
   document.getElementById("print").addEventListener("click",function(){syncPrint();window.print();});
@@ -772,6 +784,7 @@ function init(){
   });
 
   drawGuesses();
+  autoGrow();
   solve();
 
   if("serviceWorker" in navigator && location.protocol!=="file:"){
