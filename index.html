@@ -67,6 +67,11 @@ textarea,input,select{
 textarea:focus,input:focus,select:focus,button:focus-visible{
   outline:2px solid var(--ink);outline-offset:1px;
 }
+#eqprint{
+  display:none;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;
+  font-family:var(--mono);font-size:12.5px;line-height:1.75;
+  border-left:2px solid var(--ink);padding:2px 0 2px 11px;
+}
 #eqs{
   min-height:190px;line-height:26px;padding:9px 11px;resize:vertical;white-space:pre;overflow-x:auto;
   background-image:repeating-linear-gradient(to bottom,transparent 0 25px,var(--grid) 25px 26px);
@@ -131,12 +136,22 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .tb-cell input:focus{outline-offset:3px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media print{
-  body{background:#fff;padding:0}
-  .sheet{border:0;max-width:none}
+  @page{margin:14mm}
+  body{background:#fff;padding:0;font-size:11.5px}
+  .sheet{border:0;max-width:none;background:#fff}
   .noprint{display:none!important}
-  .cols{grid-template-columns:1fr 1fr}
-  #eqs{background-image:none;border:0;padding:0;min-height:0;height:auto}
-  .stamp{transform:none}
+  .hint{display:none!important}
+  .cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .pane{padding:12px 14px}
+  .pane+.pane{border-left:1px solid var(--rule)}
+  .masthead{padding:0 14px 9px}
+  .field{margin-bottom:10px}
+  #eqs{display:none}
+  #eqprint{display:block}
+  .stamp{transform:none;margin-top:14px}
+  .aud{page-break-inside:avoid;break-inside:avoid}
+  tr,.note,.stamp{page-break-inside:avoid;break-inside:avoid}
+  .titleblock{page-break-inside:avoid;break-inside:avoid}
 }
 </style>
 </head>
@@ -152,7 +167,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
       Linear &rarr; Gauss&ndash;Jordan, partial pivoting<br>
       Nonlinear &rarr; damped Newton&ndash;Raphson<br>
       Every result back-substituted and audited<br>
-      <b style="color:var(--ink)">Version 3</b> &mdash; substitution shown
+      <b style="color:var(--ink)">Version 4</b>
     </div>
   </header>
 
@@ -164,6 +179,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
         <textarea id="eqs" spellcheck="false" autocapitalize="off" autocorrect="off">3*x + 2*y - z = 14
 x - y + 4*z = 5
 2*x + y + z = 11</textarea>
+        <pre id="eqprint"></pre>
         <p class="hint">Operators <code>+ - * / ^</code> and brackets. Implicit multiplication works: <code>2Ra</code>, <code>3(x+1)</code>. Functions: sin cos tan asin acos atan sinh cosh tanh exp ln log10 sqrt abs. Constants: pi, e. Start a line with <code>#</code> for a comment. Ctrl+Enter solves.</p>
       </div>
 
@@ -551,7 +567,13 @@ function fail(msg){
   lastResult=null;
 }
 
+function syncPrint(){
+  var el=document.getElementById("eqprint"),src=document.getElementById("eqs");
+  if(el&&src)el.textContent=src.value.replace(/[ \t]+$/gm,"").replace(/\n{3,}/g,"\n\n").replace(/\s+$/,"");
+}
+
 function solve(){
+  syncPrint();
   var sys;
   try{sys=read();}catch(e){return fail(e.message);}
 
@@ -595,7 +617,9 @@ function solve(){
       }
       if(!res)return fail("Newton–Raphson did not converge from these starting values. Nonlinear systems can have several roots or none at all. Adjust the initial guesses toward the answer you expect, or check that a solution exists.");
       x=res.x;it=res.it;
-      method="Nonlinear system. Damped Newton–Raphson with a numerical Jacobian, converged in "+res.it+" iteration"+(res.it===1?"":"s")+".";
+      method="Nonlinear system. Damped Newton–Raphson with a numerical Jacobian, converged in "+res.it+
+        " iteration"+(res.it===1?"":"s")+". Starting values: "+
+        sys.names.map(function(nm,q){return nm+" = "+g[q];}).join(", ")+".";
     }
   }catch(e){return fail(e.message);}
 
@@ -717,7 +741,8 @@ function init(){
   document.getElementById("eqs").addEventListener("input",drawGuesses);
   document.getElementById("sig").addEventListener("change",render);
   document.getElementById("showsub").addEventListener("change",render);
-  document.getElementById("print").addEventListener("click",function(){window.print();});
+  document.getElementById("print").addEventListener("click",function(){syncPrint();window.print();});
+  window.addEventListener("beforeprint",syncPrint);
 
   document.getElementById("copy").addEventListener("click",function(){
     var btn=this,txt=asText();
