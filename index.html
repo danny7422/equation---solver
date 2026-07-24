@@ -153,9 +153,9 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
     <section class="pane">
       <div class="field">
         <label for="eqs">Equations &mdash; one per line</label>
-        <textarea id="eqs" spellcheck="false" autocapitalize="off" autocorrect="off">3*Ra + 2*Rb - Rc = 14
-Ra - Rb + 4*Rc = 5
-2*Ra + Rb + Rc = 11</textarea>
+        <textarea id="eqs" spellcheck="false" autocapitalize="off" autocorrect="off">3*x + 2*y - z = 14
+x - y + 4*z = 5
+2*x + y + z = 11</textarea>
         <p class="hint">Operators <code>+ - * / ^</code> and brackets. Implicit multiplication works: <code>2Ra</code>, <code>3(x+1)</code>. Functions: sin cos tan asin acos atan sinh cosh tanh exp ln log10 sqrt abs. Constants: pi, e. Start a line with <code>#</code> for a comment. Ctrl+Enter solves.</p>
       </div>
 
@@ -179,10 +179,8 @@ Ra - Rb + 4*Rc = 5
       </div>
 
       <div class="actions noprint" style="margin-top:8px">
-        <button data-ex="planar">Planar equilibrium</button>
-        <button data-ex="joint">Method of joints</button>
-        <button data-ex="slope">Slope deflection</button>
-        <button data-ex="nl">Nonlinear</button>
+        <button data-ex="lin">Linear example</button>
+        <button data-ex="nl">Nonlinear example</button>
       </div>
     </section>
 
@@ -196,7 +194,7 @@ Ra - Rb + 4*Rc = 5
 
   <footer class="titleblock">
     <div class="tb-cell"><span class="flabel">Project</span><input id="tb-proj" value="" placeholder="Project name"></div>
-    <div class="tb-cell"><span class="flabel">Member / ref</span><input id="tb-ref" value="" placeholder="e.g. Truss T-01"></div>
+    <div class="tb-cell"><span class="flabel">Reference</span><input id="tb-ref" value="" placeholder="Calculation ref"></div>
     <div class="tb-cell"><span class="flabel">Calculated by</span><input id="tb-by" value="" placeholder="Initials"></div>
     <div class="tb-cell"><span class="flabel">Date</span><input id="tb-date" value=""></div>
   </footer>
@@ -602,7 +600,7 @@ function render(){
   if(R.cond!==null&&R.cond>1e8)
     html+='<div class="note warn">Condition number is approximately '+esc(R.cond.toExponential(1))+
       ". The system is ill-conditioned: small changes in the coefficients will move the answer a lot. "+
-      "In a structural context this usually means the equations are nearly dependent — check whether the structure is close to a mechanism, or whether two equilibrium conditions are restating the same thing.</div>";
+      "The equations are nearly dependent, so small changes in the coefficients move the answer a lot. Check whether two of them are close to restating the same condition, and treat the trailing digits as unreliable.</div>";
   else if(R.cond!==null)
     html+='<div class="note">Condition number approximately '+esc(R.cond.toExponential(1))+
       ". Below 1e8 the system is well-conditioned and the digits shown are trustworthy.</div>";
@@ -639,10 +637,8 @@ function asText(){
 }
 
 var EX={
-  planar:"# Planar equilibrium of a rigid body\n# sum Fx = 0\nAx + 12 = 0\n# sum Fy = 0\nAy + By - 40 - 25 = 0\n# sum M about A = 0\nBy*8 - 40*3 - 25*6 = 0",
-  joint:"# Method of joints — three-member joint, angles in degrees\n# sum Fx = 0\nFab*cos(30*pi/180) - Fac*cos(45*pi/180) = 0\n# sum Fy = 0\nFab*sin(30*pi/180) + Fac*sin(45*pi/180) + Fad = 60\n# member AD is a zero-force member\nFad = 0",
-  slope:"# Slope deflection — two-span continuous beam, EI constant\n# joint B equilibrium and end conditions, unknowns are rotations x EI\n4*Ta + 2*Tb = 48\n2*Ta + 8*Tb + 2*Tc = -18\n2*Tb + 4*Tc = 30",
-  nl:"# Nonlinear — try guesses 3 and 4, then -3 and -4\nx^2 + y^2 = 25\nx*y = 12"
+  lin:"# Linear system — 4 equations, 4 unknowns\nw + x + y + z = 6\n2*w + 3*x - z = 0\n-3*w + 4*x + y + 2*z = 4\nw + 2*x - y + z = 0",
+  nl:"# Nonlinear — two real roots.\n# Guesses near 3 and 4 find one, near -3 and -4 find the other.\nx^2 + y^2 = 25\nx*y = 12"
 };
 
 function init(){
